@@ -21,6 +21,7 @@ def get_fifteen_scene_categories(outdir):
 			os.makedirs(fullpath)
 		if filename != '':
 			#scene.extract(filename, dirname)
-			with open(fullpath + '/' + filename, 'wb') as writer:
-				writer.write(scene.read(name))
+			if not os.path.exists(fullpath + '/' + filename):
+				with open(fullpath + '/' + filename, 'wb') as writer:
+					writer.write(scene.read(name))
 	scene.close()
