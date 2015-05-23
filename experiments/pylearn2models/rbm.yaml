@@ -1,0 +1,40 @@
+!obj:pylearn2.train.Train {
+dataset: &train !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix {
+        X: !pkl: 'mnist_train_X.pkl',
+    },
+
+    model: !obj:pylearn2.models.rbm.GaussianBinaryRBM {
+        nvis: 784,
+        nhid: 400,
+        irange: 0.05,
+        energy_function_class: !obj:pylearn2.energy_functions.rbm_energy.grbm_type_1 {},
+        mean_vis: False,
+    },
+
+    algorithm : !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: 1e-4,
+        batch_size: 10,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: 0.01,
+    },
+    monitoring_dataset: {
+        train: *train,
+    },
+    cost: !obj:pylearn2.costs.cost.SumOfCosts {
+        costs:  [
+        !obj:pylearn2.costs.ebm_estimation.SMD {
+            corruptor: !obj:pylearn2.corruption.GaussianCorruptor {
+            stdev: 0.4,
+        },
+    },
+        !obj:pylearn2.costs.ebm_estimation.CDk {
+            nsteps: 10,
+            },
+    ]
+        },
+    },
+
+    save_path: "rbm.pkl",
+    save_freq: 5,
+
+}
