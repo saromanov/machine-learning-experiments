@@ -1,0 +1,30 @@
+!obj:pylearn2.train.Train {
+dataset: &train !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix {
+        X: !pkl: 'mnist_train_X.pkl',
+    },
+
+    model: !obj:pylearn2.models.rbm.RBM {
+        nvis: 784,
+        nhid: 250,
+        irange: 0.05,
+        anneal_start: 5,
+    },
+
+    algorithm : !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: 1e-4,
+        batch_size: 50,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: 0.9,
+    },
+    monitoring_dataset: {
+        train: *train,
+    },
+    cost: !obj:pylearn2.costs.ebm_estimation.SML {
+            batch_size: 10,
+            nsteps: 100,
+            },
+    },
+    save_path: "rbm2.pkl",
+    save_freq: 5,
+
+}
