@@ -1,6 +1,7 @@
 from sklearn import manifold, svm
 from sklearn.datasets import load_digits
 from sklearn.cross_validation import train_test_split
+import matplotlib.pyplot as plt
 
 
 def isomap(X, components):
@@ -8,15 +9,18 @@ def isomap(X, components):
 
 
 def tsne1(X, components):
-    return manifold.TSNE(n_components=components, learning_rate=100, n_iter=300).fit_transform(X)
+    return manifold.TSNE(n_components=components, n_iter=300).fit_transform(X)
 
 
 def tsne2(X, components):
-    return manifold.TSNE(n_component=components, learning_rate=1000, n_iter=400).fit_transform(X)
+    return manifold.TSNE(n_components=components, learning_rate=1000, n_iter=400).fit_transform(X)
 
 
 def mds1(X, components):
     return manifold.MDS(n_components=components).fit_transform(X)
+
+def se(X, components):
+	return manifold.SpectralEmbedding(n_components=components).fit_transform(X)
 
 
 def create_model(X, y, msg):
@@ -25,6 +29,9 @@ def create_model(X, y, msg):
     model = svm.SVC(gamma=0.001)
     model.fit(train_data, train_labels)
     print("{0} {1}".format(msg, model.score(test_data, test_labels)))
+
+def create_model2(X, y, msg):
+	pass
 
 
 digits = load_digits()
@@ -36,4 +43,8 @@ newX2 = isomap(X, 20)
 create_model(newX2, y, "With Isomap and 20 comonents")
 newX3 = mds1(X, 20)
 create_model(newX3, y, "With MDS and 20 components")
-create_model(X, y, "Simple model")
+newX4 = tsne1(X,20)
+create_model(newX4, y, "With t-SNE and 20 components")
+newX5 = se(X, 2)
+create_model(newX5, y, "With Spectral Embedding and 5 components")
+create_model(X, y, "SVM, but without dimensionality reduction")
