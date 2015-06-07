@@ -23,4 +23,4 @@ digits = fetch_mldata('global-earthquakes')
 X = digits.data
 y = digits.target
 train_data, test_data, train_labels, test_labels = train_test_split(X,  y[1], test_size=0.2, random_state=124)
-GBC(train_data, train_labels, test_labels)
+ABC(train_data, train_labels, test_data)
