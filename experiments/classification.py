@@ -3,24 +3,26 @@ from sklearn.datasets import load_digits
 from sklearn.datasets import fetch_mldata
 from sklearn.cross_validation import train_test_split
 
+#Eathquake classification
 
 def ABC(Xtrain, ytrain, Xtest):
 	model = AdaBoostClassifier(n_estimators=100, learning_rate=0.001)
-	model.fit(Xtrain,ytrain)
-	return model.predict(Xtest)
+	return model.fit(Xtrain,ytrain)
 
 def GBC(Xtrain, ytrain, Xtest):
 	model = GradientBoostingClassifier(max_depth=5, learning_rate=0.001)
-	model.fit(Xtrain, ytrain)
-	return model.predict(Xtest)
+	return model.fit(Xtrain, ytrain)
 
 def BC(Xtrain, ytrain, Xtest):
-	model = BaggingClassifier(bootsrap=True)
-	model.fit(Xtrain, ytrain)
-	return model.predict(Xtest)
+	model = BaggingClassifier(bootstrap=True)
+	return model.fit(Xtrain, ytrain)
+
+def predict(model, Xtest, ytest):
+    return model.predict(Xtest), model.score(Xtest, ytest)
 
 digits = fetch_mldata('global-earthquakes')
 X = digits.data
 y = digits.target
 train_data, test_data, train_labels, test_labels = train_test_split(X,  y[1], test_size=0.2, random_state=124)
-ABC(train_data, train_labels, test_data)
+model = BC(train_data, train_labels, test_data)
+result, score = predict(model, test_data, test_labels)
