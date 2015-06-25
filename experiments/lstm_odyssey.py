@@ -67,5 +67,15 @@ class LSTM(theanets.layers.Layer):
             [TT.dot(x, self.find('xh')) + self.find('b')],
             [('h', batch_size), ('c', batch_size)])
         return dict(out=out, cell=cell), updates
+ 
+def layer_lstm(n):
+    return dict(form='bidirectional', worker='lstm', size=n)
 
-lstmng = theanets.layers.build('lstmnig', nin=39, nout=200)
+def layer_lstmnig(n):
+    return dict(form='bidirectional', worker='lstmnig', size=n)
+
+e = theanets.Experiment(
+    theanets.recurrent.Classifier,
+    layers=(39, layer_lstmnig(156), layer_lstmnig(300), layer_lstm(102), (51, 'softmax')),
+    weighted=True,
+)
