@@ -68,11 +68,44 @@ class LSTM(theanets.layers.Layer):
             [('h', batch_size), ('c', batch_size)])
         return dict(out=out, cell=cell), updates
  
+class GRUMUT(Recurrent):
+    ''' Reference to the paper
+        An Empirical Exploration of Recurrent Neural Architectures
+    '''
+    def setup(self):
+        self.add_weights('xh', self.input_size, self.size)
+        self.add_weights('xr', self.input_size, self.size)
+        self.add_weights('xz', self.input_size, self.size)
+        self.add_weights('hh', self.size, self.size)
+        self.add_weights('hr', self.size, self.size)
+        self.add_bias('bh', self.size)
+        self.add_bias('br', self.size)
+        self.add_bias('bz', self.size)
+
+    def transform(self, inputs):
+        def fn(x_t, r_t, z_t, h_tm1):
+            z = TT.nnet.sigmoid(x_t)
+            r = TT.nnet.sigmoid(r_t + TT.dot(h_tm1, self.find('hr')))
+            h_t = TT.tanh(TT.dot(r * h_tm1, self.find('hh')) + x_t)
+            return [pre, h_t, z, (1 - z) * h_tm1 + z * h_t]
+
+        x = self._only_input(inputs)
+        (pre, hid, rate, out), updates = self._scan(
+            fn,
+            [TT.dot(x, self.find('xh')) + self.find('bh'),
+             TT.dot(x, self.find('xr')) + self.find('br'),
+             TT.dot(x, self.find('xz')) + self.find('bz')],
+            [None, None, None, x])
+        return dict(pre=pre, hid=hid, rate=rate, out=out), updates
+
 def layer_lstm(n):
     return dict(form='bidirectional', worker='lstm', size=n)
 
 def layer_lstmnig(n):
     return dict(form='bidirectional', worker='lstmnig', size=n)
+
+def layer_grumut(n):
+    return dict(form='bidirectional', worker='grumut', size=n)
 
 e = theanets.Experiment(
     theanets.recurrent.Classifier,
