@@ -99,7 +99,7 @@ class GRUMUT(Recurrent):
         return dict(pre=pre, hid=hid, rate=rate, out=out), updates
 
 
-class LSTM(Recurrent):
+class SLSTM(Recurrent):
     r'''
       Generative Image Modeling Using Spatial LSTM's
     '''
