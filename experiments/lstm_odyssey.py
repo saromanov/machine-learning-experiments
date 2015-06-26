@@ -145,6 +145,9 @@ def layer_lstmnig(n):
 def layer_grumut(n):
     return dict(form='bidirectional', worker='grumut', size=n)
 
+def layer_slstm(n):
+    return dict(form='bidirectional', worker='grumut', size=n)
+
 e = theanets.Experiment(
     theanets.recurrent.Classifier,
     layers=(39, layer_lstmnig(156), layer_lstmnig(300), layer_lstm(102), (51, 'softmax')),
