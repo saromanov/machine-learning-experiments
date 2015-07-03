@@ -1,6 +1,6 @@
 from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier
-from blocks.algorithms import GradientDescent, Momentum, AdaGrad, Scale
-from blocks.bricks.cost import CategoricalCrossEntropy
+from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale
+from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
 from blocks.initialization import IsotropicGaussian, Constant
 from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
@@ -44,5 +44,33 @@ def Custom_MLP():
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
 
+def Custom_MLP2():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    layer1 = m_Linear("hidden", 784, 300)
+    hidden = Rectifier().apply(layer1.apply(x))
+    layer2 = m_Linear("hidden2", 300, 50)
+    hidden2 = Rectifier().apply(layer2.apply(hidden))
+    layer3 = m_Linear("output", 50, 10)
+    output = Softmax().apply(layer3.apply(hidden2))
+    layer1.weights_init = IsotropicGaussian(.01)
+    layer1.biases_init = Constant(0)
+    layer2.weights_init = IsotropicGaussian(.01)
+    layer2.biases_init = Constant(0)
+    layer3.weights_init = IsotropicGaussian(.01)
+    layer3.biases_init = Constant(0)
+    layer1.initialize()
+    layer2.initialize()
+    layer3.initialize()
+    loss = CategoricalCrossEntropy().apply(y.flatten(), output)
+    gr = ComputationGraph(loss)
+    monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
 
-Custom_MLP()
+
+Custom_MLP2()
