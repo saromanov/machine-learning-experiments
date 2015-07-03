@@ -1,4 +1,5 @@
 from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier
+from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
 from blocks.initialization import IsotropicGaussian, Constant
@@ -6,7 +7,7 @@ from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
 from blocks.extensions import Printing
 from blocks.main_loop import MainLoop
-from fuel.datasets import MNIST
+from fuel.datasets import MNIST, CIFAR10
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.transformers import Flatten
@@ -72,5 +73,14 @@ def Custom_MLP2():
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
 
-
-Custom_MLP2()
+def Custom_conv():
+    mnist = MNIST(("train", ))
+    x = T.tensor4('features')
+    y = T.lmatrix('targets')
+    act = Rectifier().apply
+    conv1 = ConvolutionalLayer(act, (32,32), 3, (2,2), 4, image_size=(28,28), batch_size=256,
+        weights_init = IsotropicGaussian(.1), biases_init = Constant(1.))
+    conv1.initialize()
+    res = conv1.apply(x)
+    #seq = ConvolutionalSequence([conv1], 3, image_size=(28,28))
+    #mlp = MLP(activations=[Softmax()], dims=[2056, 50]).apply([seq])
