@@ -1,4 +1,4 @@
-from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier
+from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier, Tanh
 from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
@@ -7,12 +7,14 @@ from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
 from blocks.extensions import Printing
 from blocks.main_loop import MainLoop
-from fuel.datasets import MNIST, CIFAR10
+from blocks.bricks.recurrent import GatedRecurrent, SimpleRecurrent
+from fuel.datasets import MNIST, CIFAR10, IterableDataset
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.transformers import Flatten
 import theano.tensor as T
 import theano
+import numpy as np
 
 def m_Linear(name, inp, out):
     return Linear(name=name, input_dim=inp, output_dim=out)
@@ -79,7 +81,7 @@ def Custom_MLP2():
     loop.run()
 
 def Custom_conv():
-    mnist =CIFAR10(("train", ))
+    cifar10 =MNIST(("train", ))
     x = T.tensor4('features')
     y = T.lmatrix('targets')
     act = Rectifier().apply
@@ -93,12 +95,24 @@ def Custom_conv():
     loss = Softmax().categorical_cross_entropy(y, mlp.apply(out))
     gr = ComputationGraph(loss)
     monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor_cifar())
-    data_stream = Flatten(DataStream.default_stream(mnist, 
-        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    data_stream = Flatten(DataStream.default_stream(cifar10, 
+        iteration_scheme=SequentialScheme(cifar10.num_examples, 10)))
     algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
     #func = theano.function([x], res)
     #seq = ConvolutionalSequence([conv1], 3, image_size=(28,28))
 
-Custom_conv()
+def custum_gru():
+    x = T.tensor3('x')
+    y = T.tensor3('y')
+    seq1 = np.random.randn(100, 50, 10, 2)
+    seq2 = np.zeros((100, 50, 10, 2))
+    inp = Linear(name='inp', input_dim=seq1.shape[-1], output_dim=5)
+    inpout = inp.apply(x)
+    gru = SimpleRecurrent(activation=Tanh(), dim=5, name="GRU1")
+    hidden = gru.apply(inpout)
+    output_layer = Linear(name='out', input_dim=5, output_dim=seq2.shape[-1])
+    output = output_layer.apply(hidden)
+
+custum_gru()
