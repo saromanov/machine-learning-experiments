@@ -1,13 +1,13 @@
 from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier, Tanh
 from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
-from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale
+from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
-from blocks.initialization import IsotropicGaussian, Constant
+from blocks.initialization import IsotropicGaussian, Constant, Uniform
 from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
-from blocks.extensions import Printing
+from blocks.extensions import Printing, FinishAfter
 from blocks.main_loop import MainLoop
-from blocks.bricks.recurrent import GatedRecurrent, SimpleRecurrent
+from blocks.bricks.recurrent import GatedRecurrent, SimpleRecurrent, LSTM
 from fuel.datasets import MNIST, CIFAR10, IterableDataset
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
@@ -112,7 +112,7 @@ def custum_rnn():
     inp.weights_init = IsotropicGaussian(.01)
     inp.biases_init = Constant(0)
     inpout = inp.apply(x)
-    rnn = SimpleRecurrent(activation=Tanh(), dim=5, name="GRU1")
+    rnn = SimpleRecurrent(activation=Tanh(), dim=5, name="RNN1")
     rnn.weights_init = IsotropicGaussian(.01)
     rnn.biases_init = Constant(0)
     hidden = rnn.apply(inpout)
@@ -129,9 +129,35 @@ def custum_rnn():
     output_layer.initialize()
 
     dataset = IterableDataset({'x': seq1, 'y': seq2})
-    stream = DataStream(dataset)
+    stream = DatmadaStream(dataset)
     loop = MainLoop(data_stream=stream, algorithm=algo)
     loop.run()
 
+def custum_gru():
+    x = T.tensor3('x')
+    h0 = T.tensor3('h0')
+    g = T.tensor3('g')
+    y = T.tensor3('y')
+    seq1 = np.random.randn(100, 50, 10, 2)
+    seq2 = np.zeros((100, 50, 10, 2))
+    inp = m_Linear('inp', seq1.shape[-1], 5)
+    inp.weights_init = IsotropicGaussian(.01)
+    inp.biases_init = Constant(0)
+    inpout = inp.apply(x)
+    gru = GatedRecurrent(activation=Tanh(), dim=5, name="GRU1")
+    gru.weights_init = IsotropicGaussian(.01)
+    gru.biases_init = Constant(0)
+    hidden = gru.apply(x, h0,g)
+    output_layer = Linear(name='out', input_dim=5, output_dim=seq2.shape[-1])
+    output_layer.weights_init = IsotropicGaussian(.01)
+    output_layer.biases_init = Constant(0)
+    output = output_layer.apply(hidden)
+    cost = CategoricalCrossEntropy().apply(output, y)
+    gr = ComputationGraph(cost)
+    algo = GradientDescent(cost=cost, step_rule=Adam(), params=gr.parameters)
+    inp.initialize()
+    gru.initialize()
+    output_layer.initialize()
 
-custum_rnn()
+
+custum_gru()
