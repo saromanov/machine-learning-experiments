@@ -129,8 +129,8 @@ def custum_rnn():
     output_layer.initialize()
 
     dataset = IterableDataset({'x': seq1, 'y': seq2})
-    stream = DatmadaStream(dataset)
-    loop = MainLoop(data_stream=stream, algorithm=algo)
+    stream = DataStream(dataset)
+    loop = MainLoop(data_stream=stream, algorithm=algo, extensions=[Printing(), FinishAfter(after_n_epochs=10)])
     loop.run()
 
 def custum_gru():
@@ -160,4 +160,4 @@ def custum_gru():
     output_layer.initialize()
 
 
-custum_gru()
+custum_rnn()
