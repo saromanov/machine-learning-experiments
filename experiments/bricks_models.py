@@ -103,16 +103,35 @@ def Custom_conv():
     #func = theano.function([x], res)
     #seq = ConvolutionalSequence([conv1], 3, image_size=(28,28))
 
-def custum_gru():
+def custum_rnn():
     x = T.tensor3('x')
     y = T.tensor3('y')
     seq1 = np.random.randn(100, 50, 10, 2)
     seq2 = np.zeros((100, 50, 10, 2))
-    inp = Linear(name='inp', input_dim=seq1.shape[-1], output_dim=5)
+    inp = m_Linear('inp', seq1.shape[-1], 5)
+    inp.weights_init = IsotropicGaussian(.01)
+    inp.biases_init = Constant(0)
     inpout = inp.apply(x)
-    gru = SimpleRecurrent(activation=Tanh(), dim=5, name="GRU1")
-    hidden = gru.apply(inpout)
+    rnn = SimpleRecurrent(activation=Tanh(), dim=5, name="GRU1")
+    rnn.weights_init = IsotropicGaussian(.01)
+    rnn.biases_init = Constant(0)
+    hidden = rnn.apply(inpout)
     output_layer = Linear(name='out', input_dim=5, output_dim=seq2.shape[-1])
+    output_layer.weights_init = IsotropicGaussian(.01)
+    output_layer.biases_init = Constant(0)
     output = output_layer.apply(hidden)
 
-custum_gru()
+    cost = CategoricalCrossEntropy().apply(output, y)
+    gr = ComputationGraph(cost)
+    algo = GradientDescent(cost=cost, step_rule=AdaDelta(), params=gr.parameters)
+    inp.initialize()
+    rnn.initialize()
+    output_layer.initialize()
+
+    dataset = IterableDataset({'x': seq1, 'y': seq2})
+    stream = DataStream(dataset)
+    loop = MainLoop(data_stream=stream, algorithm=algo)
+    loop.run()
+
+
+custum_rnn()
