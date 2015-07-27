@@ -36,7 +36,7 @@ class Fun(Initializable):
         self.loss = CategoricalCrossEntropy()
         self.children = [encoder, decoder, self.loss]
 
-    @application
+    @application(inputs=['x'], outputs=['targets'])
     def cost(self, x):
         result = self.encoder.apply(x)
         decoder_res = self.decoder.apply(result)
@@ -48,6 +48,7 @@ def GMSE(Cost):
     @application
     def apply(self, x, mu=0, sigma=1):
         return ((0.5 * T.log(2 * np.pi) + sigma) + 0.5 * ((x - mean)/T.exp(sigma))**2).sum(axis=-1)
+
 def m_Linear(name, inp, out):
     return Linear(name=name, input_dim=inp, output_dim=out)
 
@@ -205,7 +206,7 @@ def triplet():
 
 
 def fun_test():
-    mnist = MNIST(("train",))
+    mnist = MNIST(("train",), sources=['features'])
     x = T.matrix('features')
     fun1 = Fun(300,10)
     loss = fun1.cost(x)
@@ -214,7 +215,7 @@ def fun_test():
     data_stream = Flatten(DataStream.default_stream(mnist, 
         iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
     algorithm = GradientDescent(cost=loss, step_rule=Scale(learning_rate=0.1), params=gr.parameters)
-    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[Printing()])
     loop.run()
 
 fun_test()
