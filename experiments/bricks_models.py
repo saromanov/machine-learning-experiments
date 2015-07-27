@@ -1,4 +1,6 @@
-from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier, Tanh
+from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier, Tanh, LinearMaxout, Initializable,\
+Feedforward, Brick
+from blocks.bricks import application
 from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
@@ -7,6 +9,7 @@ from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
 from blocks.extensions import Printing, FinishAfter
 from blocks.main_loop import MainLoop
+from blocks.utils import shared_floatx_nans
 from blocks.bricks.recurrent import GatedRecurrent, SimpleRecurrent, LSTM
 from fuel.datasets import MNIST, CIFAR10, IterableDataset
 from fuel.streams import DataStream
@@ -15,6 +18,30 @@ from fuel.transformers import Flatten
 import theano.tensor as T
 import theano
 import numpy as np
+
+
+class Fun(Initializable):
+    def __init__(self, inpnum, outnum, **kwargs):
+        super(Fun, self).__init__(self, **kwargs)
+        self.inpnum = inpnum
+        self.outnum = outnum
+        encoder = MLP(activations=[Logistic(), Softmax()], dims=[784,inpnum,outnum])
+        decoder = MLP(activations=[Tanh(), Softmax()], dims=[outnum,inpnum,784])
+        encoder.weights_init = IsotropicGaussian(.01)
+        encoder.biases_init = Constant(0)
+        decoder.weights_init = IsotropicGaussian(.01)
+        decoder.biases_init = Constant(0)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.loss = CategoricalCrossEntropy()
+        self.children = [encoder, decoder, self.loss]
+
+    @application
+    def cost(self, x):
+        result = self.encoder.apply(x)
+        decoder_res = self.decoder.apply(result)
+        return self.loss.apply(x.flatten(), decoder_res.flatten())
+
 
 def m_Linear(name, inp, out):
     return Linear(name=name, input_dim=inp, output_dim=out)
@@ -160,4 +187,29 @@ def custum_gru():
     output_layer.initialize()
 
 
-custum_rnn()
+def triplet():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    mlp1 = MLP(activations=[Logistic(), Softmax()], dims=[784,300,10])
+    mlp1out = mlp1.apply(x)
+    mlp1.weights_init = IsotropicGaussian(.01)
+    mlp1.biases_init = Constant(0)
+    mlp2 = MLP(activations=[Rectifier(), Softmax()], dims=[784,300,1])
+    mlp2out = mlp1.apply(mlp1out)
+
+
+def fun_test():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    fun1 = Fun(300,10)
+    loss = fun1.cost(x)
+    gr = ComputationGraph(loss)
+    monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=Scale(learning_rate=0.1), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
+
+fun_test()
