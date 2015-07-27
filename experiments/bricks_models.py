@@ -3,7 +3,7 @@ Feedforward, Brick
 from blocks.bricks import application
 from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
-from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError
+from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError, Cost
 from blocks.initialization import IsotropicGaussian, Constant, Uniform
 from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
@@ -43,6 +43,11 @@ class Fun(Initializable):
         return self.loss.apply(x.flatten(), decoder_res.flatten())
 
 
+
+def GMSE(Cost):
+    @application
+    def apply(self, x, mu=0, sigma=1):
+        return ((0.5 * T.log(2 * np.pi) + sigma) + 0.5 * ((x - mean)/T.exp(sigma))**2).sum(axis=-1)
 def m_Linear(name, inp, out):
     return Linear(name=name, input_dim=inp, output_dim=out)
 
