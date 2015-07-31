@@ -3,7 +3,7 @@ Feedforward, Brick
 from blocks.bricks import application
 from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
-from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError, Cost
+from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError, Cost, BinaryCrossEntropy, CostMatrix
 from blocks.initialization import IsotropicGaussian, Constant, Uniform
 from blocks.graph import ComputationGraph
 from blocks.extensions.monitoring import DataStreamMonitoring
@@ -240,4 +240,36 @@ def fun_test():
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[Printing()])
     loop.run()
 
-fun_test()
+class Loss1(Cost):
+    def __init__(self):
+        super(Loss1, self).__init__()
+        self.relu = Rectifier()
+        self.children = [self.relu]
+
+    @application(outputs=["cost2"])
+    def apply(self, x):
+        cost = T.sum(T.log(self.relu.apply(x) + 0.001))
+        return cost
+
+def two_cost_mlp():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    layer1 = MLP(activations=[Logistic(), Softmax()], dims=[784,300,10])
+    output = layer1.apply(x)
+    layer1.weights_init = IsotropicGaussian(.01)
+    layer1.biases_init = Constant(0)
+    layer1.initialize()
+    loss = CategoricalCrossEntropy().apply(y.flatten(), output)
+    loss2 = Loss1().apply(output)
+    gr = ComputationGraph(loss+loss2)
+    monitor = DataStreamMonitoring(variables=[loss, loss2], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
+
+
+
+two_cost_mlp()
