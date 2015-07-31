@@ -44,6 +44,28 @@ class Fun(Initializable):
 
 
 
+class EncoderDecoder(Initializable):
+    def __init__(self, inpnum, outnum):
+        super(EncoderDecoder, self).__init__(self, **kwargs)
+        rnn = SimpleRecurrent(activation=Tanh(), dim=5, name="RNN1")
+        rnn.weights_init = IsotropicGaussian(.01)
+        rnn.biases_init = Constant(0)
+        hidden = rnn.apply(inpout)
+        rnn2 = SimpleRecurrent(activation=Logistic(), dim=5, name="RNN2")
+        output = rnn2.apply(hidden)
+        self.encoder = rnn
+        self.decoder = rnn2
+        self.loss = CategoricalCrossEntropy()
+        self.children = [rnn, rnn2, self.loss]
+
+    def cost(self, x):
+        result = self.encoder.apply(x)
+        decoder_res = self.decoder.apply(result)
+        output = Softmax().apply(decoder_res)
+        return self.loss.apply(x.flatten)
+
+
+
 def GMSE(Cost):
     @application
     def apply(self, x, mu=0, sigma=1):
