@@ -271,5 +271,22 @@ def two_cost_mlp():
     loop.run()
 
 
+def relu_mlp():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    layer1 = MLP(activations=[Rectifier(), Rectifier(), Softmax()], dims=[784,300,100, 10])
+    output = layer1.apply(x)
+    layer1.weights_init = IsotropicGaussian(.01)
+    layer1.biases_init = Constant(0)
+    layer1.initialize()
+    loss = CategoricalCrossEntropy().apply(y.flatten(), output)
+    gr = ComputationGraph(loss)
+    monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
 
-two_cost_mlp()
+relu_mlp()
