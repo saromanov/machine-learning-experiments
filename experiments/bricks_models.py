@@ -5,7 +5,9 @@ from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPoo
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError, Cost, BinaryCrossEntropy, CostMatrix
 from blocks.initialization import IsotropicGaussian, Constant, Uniform
-from blocks.graph import ComputationGraph
+from blocks.graph import ComputationGraph, apply_dropout
+from blocks.filter import VariableFilter
+from blocks.roles import INPUT
 from blocks.extensions.monitoring import DataStreamMonitoring
 from blocks.extensions import Printing, FinishAfter
 from blocks.main_loop import MainLoop
@@ -65,6 +67,41 @@ class EncoderDecoder(Initializable):
         return self.loss.apply(x.flatten)
 
 
+class SimNetLayer(Initializable):
+    def __init__(self, inpnum, outnum, typelayer='linear', **kwargs):
+        super(SimNetLayer, self).__init__(self, **kwargs)
+        self.beta = 0.01
+        self.simtype = typelayer
+        self.inpnum = inpnum
+        self.outnum = outnum
+        self.children = [self.beta]
+
+    def _initialize(self):
+        W, b = self.paremeters
+        self.weights_init.initialize(W, self.rng)
+        self.biases_init.initialize(b, self.rng)
+        
+    def _allocate(self):
+        W = shared_floatx_nans((self.inpnum, self.outnum), name='W')
+        self.parameters.append(W)
+        b = shared_floatx_nans((self.outnum,), name='b')
+        self.parameters.append(b)
+
+    def apply(self, X, z):
+        ''' X - input value
+            z - template
+        '''
+        W, b = self.parameters
+        if self.simtype == 'linear':
+            similarity = X * Z
+        if self.simtype == 'l1':
+            similarity = -T.abs(X - Z)
+        else:
+            similarity = self.beta * T.exp(T.dot(X, Z))
+        forward = T.dot(similarity, W)
+        n = X.shape[0]
+        activation = lambda t: 1/self.beta * T.log(t + b/n)
+        return activation(T.sum(forward))
 
 def GMSE(Cost):
     @application
@@ -289,4 +326,34 @@ def relu_mlp():
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
 
-relu_mlp()
+def relu_mlp_dropout():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    layer1 = MLP(activations=[Rectifier(), Rectifier(), Softmax()], dims=[784,300,100, 10])
+    output = layer1.apply(x)
+    layer1.weights_init = IsotropicGaussian(.01)
+    layer1.biases_init = Constant(0)
+    layer1.initialize()
+    loss = CategoricalCrossEntropy().apply(y.flatten(), output)
+    gr = ComputationGraph(loss)
+    gr2 = ComputationGraph(x)
+    inputs = VariableFilter(roles=[INPUT])(gr2.variables)
+    after_drop = apply_dropout(gr2, inputs,0.5)
+    monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
+
+
+def simnet_mlp():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    z = T.matrix('template')
+    y = T.lmatrix('targets')
+    layer1 = m_Linear("hidden", 784, 300)
+    simnet = SimNetLayer(300, 10).apply(x, z)
+
+relu_mlp_dropout()
