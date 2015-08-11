@@ -87,7 +87,7 @@ class SimNetLayer(Initializable, Feedforward):
         b = shared_floatx_nans((self.outnum,), name='b')
         self.parameters.append(b)
 
-    @application
+    @application(inputs=['X', 'Z'], outputs='output')
     def apply(self, X, Z):
         ''' X - input value
             z - template
@@ -102,7 +102,8 @@ class SimNetLayer(Initializable, Feedforward):
         forward = T.dot(similarity, W)
         n = X.shape[0]
         activation = lambda t: 1/self.beta * T.log(t + b/n)
-        return activation(T.sum(forward))
+        output = activation(T.sum(forward))
+        return output
 
 def GMSE(Cost):
     @application
@@ -355,7 +356,23 @@ def simnet_mlp():
     z = T.matrix('template')
     y = T.lmatrix('targets')
     layer1 = m_Linear("hidden", 784, 300)
-    simnet = SimNetLayer(300, 10).apply(x, z)
+    simnet = SimNetLayer(300, 10)
+    output = simnet.apply(x, z)
+    layer1.weights_init = IsotropicGaussian(.01)
+    layer1.biases_init = Constant(0)
+    layer1.initialize()
+    simnet.weights_init = IsotropicGaussian(.01)
+    simnet.biases_init = Constant(0)
+    simnet.initialize()
+    loss = CategoricalCrossEntropy().apply(y.flatten(), output)
+    gr = ComputationGraph(loss)
+    monitor = DataStreamMonitoring(variables=[loss], data_stream=test_set_monitor())
+    data_stream = Flatten(DataStream.default_stream(mnist, 
+        iteration_scheme=SequentialScheme(mnist.num_examples, batch_size=256)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
+
 
 
 simnet_mlp()
