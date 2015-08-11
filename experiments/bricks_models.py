@@ -67,17 +67,17 @@ class EncoderDecoder(Initializable):
         return self.loss.apply(x.flatten)
 
 
-class SimNetLayer(Initializable):
+class SimNetLayer(Initializable, Feedforward):
     def __init__(self, inpnum, outnum, typelayer='linear', **kwargs):
-        super(SimNetLayer, self).__init__(self, **kwargs)
+        super(SimNetLayer, self).__init__(**kwargs)
         self.beta = 0.01
         self.simtype = typelayer
         self.inpnum = inpnum
         self.outnum = outnum
-        self.children = [self.beta]
+        self.parameters=[]
 
     def _initialize(self):
-        W, b = self.paremeters
+        W, b = self.parameters
         self.weights_init.initialize(W, self.rng)
         self.biases_init.initialize(b, self.rng)
         
@@ -87,7 +87,8 @@ class SimNetLayer(Initializable):
         b = shared_floatx_nans((self.outnum,), name='b')
         self.parameters.append(b)
 
-    def apply(self, X, z):
+    @application
+    def apply(self, X, Z):
         ''' X - input value
             z - template
         '''
@@ -171,6 +172,7 @@ def Custom_MLP2():
     algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
+
 
 def Custom_conv():
     cifar10 =MNIST(("train", ))
@@ -347,7 +349,6 @@ def relu_mlp_dropout():
     loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
     loop.run()
 
-
 def simnet_mlp():
     mnist = MNIST(("train",))
     x = T.matrix('features')
@@ -356,4 +357,5 @@ def simnet_mlp():
     layer1 = m_Linear("hidden", 784, 300)
     simnet = SimNetLayer(300, 10).apply(x, z)
 
-relu_mlp_dropout()
+
+simnet_mlp()
