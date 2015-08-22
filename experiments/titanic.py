@@ -40,9 +40,9 @@ def model1():
         'clf__max_features': [0.5,1],
         'clf__max_depth': [5, None],
         }, cv=5, verbose=3)
-    grid.fit(train_data[0:, 2:], train_data[0:,0])
-    model = RandomForestClassifier(n_estimators=100)
-    model = model.fit(train_data[0:, 2:], train_data[0:,0])
+    model = grid.fit(train_data[0:, 2:], train_data[0:,0])
+    #model = RandomForestClassifier(n_estimators=100)
+    #model = model.fit(train_data[0:, 2:], train_data[0:,0])
 
     df_test = pd.read_csv('../pyconuk-introtutorial/data/test.csv')
     df_test = df_test.drop(['Name', 'Ticket', 'Cabin'], axis=1)
