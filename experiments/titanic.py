@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing, cross_validation
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import f_regression
 from sklearn import svm
 from scipy.stats import mode
 from sklearn.grid_search import GridSearchCV
@@ -30,15 +32,17 @@ def model1():
     cols = [cols[1]] + cols[0:1] + cols[2:]
     df = df[cols]
     train_data = df.values
+    anova_pre = SelectKBest(f_regression, k=8)
     model = Pipeline([
         ('inp', preprocessing.Imputer(strategy='mean', missing_values=-1)),
-        ('clf', RandomForestClassifier(n_estimators=100)),
-        ('cls2', svm.SVC()),
+        ('anova', anova_pre),
+        ('clf', GradientBoostingClassifier(n_estimators=100)),
         ])
     grid = GridSearchCV(model, {
         'inp__strategy': ['mean', 'median'],
-        'clf__max_features': [0.5,1],
-        'clf__max_depth': [5, None],
+        'clf__learning_rate': [0.8,1],
+        'clf__max_depth':[5, None],
+        'clf__n_estimators': [50, 100,150],
         }, cv=5, verbose=3)
     model = grid.fit(train_data[0:, 2:], train_data[0:,0])
     #model = RandomForestClassifier(n_estimators=100)
