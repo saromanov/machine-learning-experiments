@@ -8,6 +8,10 @@ from sklearn.feature_selection import f_regression
 from sklearn import svm
 from scipy.stats import mode
 from sklearn.grid_search import GridSearchCV
+from keras.models import Sequential
+from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizers import SGD
+from keras.utils import np_utils
 
 def load_test():
     df = pd.read_csv('../pyconuk-introtutorial/data/test.csv')
@@ -16,6 +20,24 @@ def load_test():
     age_mean = df['Age'].mean()
     df['Age'] = df['Age'].fillna(age_mean)
     fare_means = df.pivot_table('Fare', index='Pclass', aggfunc='mean')
+
+
+def nn(X, y, Xtest, ytest):
+    print("THis is shape: ", X.shape, y.shape, np.max(y)+1)
+    y = np_utils.to_categorical(y, np.max(y)+1)
+    ytest = np_utils.to_categorical(ytest, np.max(y)+1)
+    model = Sequential()
+    model.add(Dense(9,10))
+    model.add(Activation('sigmoid'))
+    model.add(Dropout(0.2))
+    model.add(Dense(10,6))
+    model.add(Activation('relu'))
+    model.add(Dense(6,np.max(y)+1))
+    model.add(Activation('softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam')
+    history = model.fit(X, y, nb_epoch=20, verbose=1, show_accuracy=True, validation_split=0.1)
+    score = model.evaluate(Xtest, ytest, verbose=1, show_accuracy=True)
+    print('Test score: ', score[0])
 
 
 def model1():
@@ -32,19 +54,19 @@ def model1():
     cols = [cols[1]] + cols[0:1] + cols[2:]
     df = df[cols]
     train_data = df.values
-    anova_pre = SelectKBest(f_regression, k=8)
+    '''anova_pre = SelectKBest(f_regression, k=8)
     model = Pipeline([
         ('inp', preprocessing.Imputer(strategy='mean', missing_values=-1)),
         ('anova', anova_pre),
-        ('clf', GradientBoostingClassifier(n_estimators=100)),
+        ('clf', GradientBoostingClassifier()),
         ])
     grid = GridSearchCV(model, {
         'inp__strategy': ['mean', 'median'],
-        'clf__learning_rate': [0.8,1],
-        'clf__max_depth':[5, None],
-        'clf__n_estimators': [50, 100,150],
+        'clf__learning_rate': [0.5, 0.8,1],
+        'clf__max_depth':[5, 7, None],
+        'clf__n_estimators': [50, 100],
         }, cv=5, verbose=3)
-    model = grid.fit(train_data[0:, 2:], train_data[0:,0])
+    model = grid.fit(train_data[0:, 2:], train_data[0:,0])'''
     #model = RandomForestClassifier(n_estimators=100)
     #model = model.fit(train_data[0:, 2:], train_data[0:,0])
 
@@ -59,8 +81,9 @@ def model1():
     df_test = pd.concat([df_test, pd.get_dummies(df_test['Embarked'], prefix='Embarked')], axis=1)
     df_test = df_test.drop(['Sex', 'Embarked'], axis=1)
     test_data = df_test.values
-    output = model.predict(test_data[:,1:])
-    print("This is test: ", model.score(train_data[0:, 2:], train_data[0:,0]))
+    '''output = model.predict(test_data[:,1:])
+    print("This is test: ", model.score(train_data[0:, 2:], train_data[0:,0]))'''
+    nn(train_data[0:, 2:], train_data[0:,0], train_data[0:, 2:], train_data[0:,0])
 
 model1()
 
