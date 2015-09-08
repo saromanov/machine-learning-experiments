@@ -3,6 +3,24 @@ import theano
 import theano.tensor as T
 import lasagne
 
+class TripletLayer(lasagne.layers.Layer):
+    '''
+       Networks is simple one layer feed forfard network
+    '''
+    def __init__(self, inp, num_units, W1=lasagne.init.Normal(.01), 
+        W2=lasagne.init.Normal(.01),
+        W3 = lasagne.init.Normal(.01),
+        **kwargs):
+        super(TripletLayer, self).__init__(inp, **kwargs)
+        self.W1 = W1
+        self.W2 = W2
+        self.W3 = W3
+
+    def get_output_for(self, inp, inpplus, inpminus, **kwargs):
+        net1 = T.dot(inp, self.W1)
+        net2 = T.dot(inpplus, self.W2)
+        net3 = T.dot(inpminus, self.W3)
+        return T.dot()
 
 def l_mlp(epochs):
     inpd = T.tensor4('inputs')
