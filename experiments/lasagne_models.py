@@ -4,7 +4,7 @@ import theano.tensor as T
 import lasagne
 
 
-def l_mlp():
+def l_mlp(epochs):
     inpd = T.tensor4('inputs')
     target = T.ivector('targets')
     inp = lasagne.layers.InputLayer(shape=(None,1,28,28,28), input_var=input_var)
@@ -24,3 +24,13 @@ def l_mlp():
     updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
     train_fn = theano.function([inpd, target], loss, updates=updates)
     val_fn = theano.function([inpd, target], [test_loss, test_acc])
+    print("Start training..")
+    for epoch in range(epochs):
+        training_err = 0
+        training_batches = 0
+        for batch in iterate_minibatches(X_val, y_val, 500, shuffle=False):
+            inputs, targets = batch
+            train_err += train_err(inputs, targets)
+            training_batches += 1
+
+
