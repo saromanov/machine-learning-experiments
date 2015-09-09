@@ -7,10 +7,13 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
 from keras.optimizers import SGD, Adadelta, Adagrad
 from keras.utils import np_utils, generic_utils
+from keras.datasets.data_utils import get_file
 from six.moves import range
 
 
-def stacked_lstm():
+def stacked_lstm(iters=30, diversity=[0.1,0.5,1.5]):
+    text = open('text').read().lower()
+    chars = set(text)
     model = Sequential()
     model.add(LSTM(256,256))
     model.add(Dropout(0.3))
@@ -20,6 +23,11 @@ def stacked_lstm():
     model.add(Dropout(0.3))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+    for i in range(iters):
+        model.fit(X, y, batch_size=128,, nb_epoch=1)
+        for diver in diversity:
+            pass
+
 
 def conv():
     batch_size = 32
