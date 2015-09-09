@@ -10,6 +10,17 @@ from keras.utils import np_utils, generic_utils
 from six.moves import range
 
 
+def stacked_lstm():
+    model = Sequential()
+    model.add(LSTM(256,256))
+    model.add(Dropout(0.3))
+    model.add(LSTM(128,128))
+    model.add(Dropout(0.3))
+    model.add(LSTM(128,128))
+    model.add(Dropout(0.3))
+    model.add(Activation('softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
 def conv():
     batch_size = 32
     nb_classes = 10
@@ -44,3 +55,5 @@ def conv():
     model.add(Activation('softmax'))
     sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(loss='categorical_crossentropy', optimizer=sgd)
+
+conv()
