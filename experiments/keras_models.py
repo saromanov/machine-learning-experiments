@@ -12,6 +12,7 @@ from six.moves import range
 
 
 def stacked_lstm(iters=30, diversity=[0.1,0.5,1.5]):
+    maxlen = 20
     text = open('text').read().lower()
     chars = set(text)
     model = Sequential()
@@ -26,7 +27,13 @@ def stacked_lstm(iters=30, diversity=[0.1,0.5,1.5]):
     for i in range(iters):
         model.fit(X, y, batch_size=128,, nb_epoch=1)
         for diver in diversity:
-            pass
+            print('Diversity: {0}'.format(diver))
+            generated = ''
+            sent = text[start:start + maxlen]
+            generated + sent
+            print(generated)
+            for it in range(200):
+                pass
 
 
 def conv():
