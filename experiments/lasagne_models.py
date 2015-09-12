@@ -16,11 +16,18 @@ class TripletLayer(lasagne.layers.Layer):
         self.W2 = W2
         self.W3 = W3
 
+    def _loss(self, X1, X2):
+        return T.sqr((X1 - X2)**2)
+
     def get_output_for(self, inp, inpplus, inpminus, **kwargs):
         net1 = T.dot(inp, self.W1)
         net2 = T.dot(inpplus, self.W2)
         net3 = T.dot(inpminus, self.W3)
-        return T.dot()
+        first = self._loss(net1, net2)
+        second = self._loss(net1, net3)
+        dplus = first/(first + second)
+        dminus = second/(second + first)
+        return dplus + dminus
 
 def l_mlp(epochs):
     inpd = T.tensor4('inputs')
