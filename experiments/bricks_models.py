@@ -1,12 +1,14 @@
 from blocks.bricks import Linear, Softmax, Logistic, MLP, Rectifier, Tanh, LinearMaxout, Initializable,\
 Feedforward, Brick
 from blocks.bricks import application
-from blocks.bricks.conv import ConvolutionalLayer, ConvolutionalSequence, MaxPooling, Flattener
+from blocks.bricks.conv import *
 from blocks.algorithms import GradientDescent, Momentum, AdaGrad, AdaDelta, Scale, Adam
 from blocks.bricks.cost import CategoricalCrossEntropy, SquaredError, Cost, BinaryCrossEntropy, CostMatrix
 from blocks.initialization import IsotropicGaussian, Constant, Uniform
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.filter import VariableFilter
+from blocks.roles import WEIGHT, BIAS, add_role
+from blocks.initialization import *
 from blocks.roles import INPUT
 from blocks.extensions.monitoring import DataStreamMonitoring
 from blocks.extensions import Printing, FinishAfter
@@ -67,25 +69,29 @@ class EncoderDecoder(Initializable):
         return self.loss.apply(x.flatten)
 
 
-class SimNetLayer(Initializable, Feedforward, Brick):
+class SimNetLayer(Initializable):
     def __init__(self, inpnum, outnum, typelayer='linear', **kwargs):
         super(SimNetLayer, self).__init__(**kwargs)
         self.beta = 0.01
         self.simtype = typelayer
         self.inpnum = inpnum
         self.outnum = outnum
-        self.parameters=[]
+
+    @property
+    def W(self):
+        return self.parameters[0]
+
+    def _allocate(self):
+        W = shared_floatx_nans((self.inpnum, self.outnum), name='W')
+        add_role(W, WEIGHT)
+        self.parameters.append(W)
+        b = shared_floatx_nans((self.outnum,), name='b')
+        self.parameters.append(b)
 
     def _initialize(self):
         W, b = self.parameters
         self.weights_init.initialize(W, self.rng)
         self.biases_init.initialize(b, self.rng)
-        
-    def _allocate(self):
-        W = shared_floatx_nans((self.inpnum, self.outnum), name='W')
-        self.parameters.append(W)
-        b = shared_floatx_nans((self.outnum,), name='b')
-        self.parameters.append(b)
 
     @application(inputs=["X"])
     def apply(self, X):
@@ -440,6 +446,24 @@ def twocost_rnn():
     gr2 = ComputationGraph(cost)
 
 
+
+def char_level_conv(num_filters=2, features=256, filter_fim=2, time_d=20):
+    x = T.ftensor3('x')
+    inp = x.dimshuffle(0,2,1, 'x')
+    W = Constant(.1)
+    output = T.nnet.conv2d(inp, W)
+    result = output.dimshuffle(0,2,1,3)[:,:,:,0]
+    loss = Softmax().categorical_cross_entropy(y, result)
+    gr = ComputationGraph(loss)
+    monitor = DataStreamMonitoring(variables=[loss])
+    data_stream = Flatten(DataStream.default_stream(cifar10, 
+        iteration_scheme=SequentialScheme(cifar10.num_examples, 10)))
+    algorithm = GradientDescent(cost=loss, step_rule=AdaDelta(), params=gr.parameters)
+    loop = MainLoop(data_stream=data_stream, algorithm=algorithm, extensions=[monitor, Printing()])
+    loop.run()
+
+
+
 def fun():
     mnist = MNIST(("train",))
     x = T.matrix('features')
@@ -452,4 +476,4 @@ def fun():
     layer2.children[0].params[0].set_value(([[1,2,3], [8,5,4]]))
     print(layer2.children[0].params[0].get_value())
 
-stacked_rnn()
+char_level_conv()
