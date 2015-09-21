@@ -67,7 +67,7 @@ class EncoderDecoder(Initializable):
         return self.loss.apply(x.flatten)
 
 
-class SimNetLayer(Initializable, Feedforward):
+class SimNetLayer(Initializable, Feedforward, Brick):
     def __init__(self, inpnum, outnum, typelayer='linear', **kwargs):
         super(SimNetLayer, self).__init__(**kwargs)
         self.beta = 0.01
@@ -87,23 +87,23 @@ class SimNetLayer(Initializable, Feedforward):
         b = shared_floatx_nans((self.outnum,), name='b')
         self.parameters.append(b)
 
-    @application(inputs=['X', 'Z'], outputs='output')
-    def apply(self, X, Z):
+    @application(inputs=["X"])
+    def apply(self, X):
         ''' X - input value
             z - template
         '''
         W, b = self.parameters
         if self.simtype == 'linear':
-            similarity = X * Z
+            similarity = X
         if self.simtype == 'l1':
             similarity = -T.abs(X - Z)
-        else:
-            similarity = self.beta * T.exp(T.dot(X, Z))
+        '''else:
+            similarity = self.beta * T.exp(T.dot(X, Z))'''
         forward = T.dot(similarity, W)
         n = X.shape[0]
         activation = lambda t: 1/self.beta * T.log(t + b/n)
         output = activation(T.sum(forward))
-        return output
+        return X
 
 def GMSE(Cost):
     @application
@@ -357,7 +357,7 @@ def simnet_mlp():
     y = T.lmatrix('targets')
     layer1 = m_Linear("hidden", 784, 300)
     simnet = SimNetLayer(300, 10)
-    output = simnet.apply(x, z)
+    output = simnet.apply(x)
     layer1.weights_init = IsotropicGaussian(.01)
     layer1.biases_init = Constant(0)
     layer1.initialize()
@@ -407,5 +407,49 @@ def stacked_rnn():
     stream = DataStream(dataset)
     loop = MainLoop(data_stream=stream, algorithm=algo, extensions=[Printing(), FinishAfter(after_n_epochs=10)])
     loop.run()
+
+
+def twocost_rnn():
+    x = T.tensor3('x')
+    y = T.tensor3('y')
+    seq1 = np.random.randn(100, 50, 10, 2)
+    seq2 = np.zeros((100, 50, 10, 2))
+    inp = m_Linear('inp', seq1.shape[-1], 5)
+    inp.weights_init = IsotropicGaussian(.01)
+    inp.biases_init = Constant(0)
+    inpout = inp.apply(x)
+    rnn1 = SimpleRecurrent(activation=Tanh(), dim=10, name="RNN1")
+    rnn1.weights_init = IsotropicGaussian(.01)
+    rnn1.biases_init = Constant(0)
+    hidden = rnn1.apply(inpout)
+    rnn2 = SimpleRecurrent(activations=Rectifier(), dim=8, name="RNN2")
+    rnn2.weights_init = IsotropicGaussian(.01)
+    rnn2.biases_init = Constant(0)
+    hidden2 = rnn2.apply(inpout)
+    output_layer = Linear(name='out', input_dim=5, output_dim=seq2.shape[-1])
+    output_layer.weights_init = IsotropicGaussian(.01)
+    output_layer.biases_init = Constant(0)
+    output = output_layer.apply(hidden)
+    output_layer2 = Linear(name='out', input_dim=5, output_dim=seq2.shape[-1])
+    output_layer2.weights_init = IsotropicGaussian(.01)
+    output_layer2.biases_init = Constant(0)
+    output2 = output_layer.apply(hidden2)
+    cost = CategoricalCrossEntropy().apply(output, y)
+    cost2 = CategoricalCrossEntropy().apply()
+    gr = ComputationGraph(cost)
+    gr2 = ComputationGraph(cost)
+
+
+def fun():
+    mnist = MNIST(("train",))
+    x = T.matrix('features')
+    y = T.lmatrix('targets')
+    layer2 = MLP(activations=[Rectifier(), Rectifier(), Softmax()], dims=[784,300,100, 10])
+    output2 = layer2.apply(x)
+    layer2.weights_init = IsotropicGaussian(.01)
+    layer2.biases_init = Constant(0)
+    layer2.initialize()
+    layer2.children[0].params[0].set_value(([[1,2,3], [8,5,4]]))
+    print(layer2.children[0].params[0].get_value())
 
 stacked_rnn()
