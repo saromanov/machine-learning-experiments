@@ -14,11 +14,18 @@ class NewsClassify:
        self.count_vec = CountVectorizer()
        CVTrain = self.count_vec.fit_transform(self.train_data.data)
        self.tfidf = TfidfTransformer()
-       self.tfidf_data = self.tfidf.fit_transform(CVTrain) 
+       self.train =  self.tfidf.fit_transform(CVTrain)
+       self.labels = self.train_data.target
+       self.test = self.test_data.data
        self.model = method()
 
-    def train(self, method=RandomForestClassifier):
-        self.model.fit(self.tfidf_data, self.train_data.target)
+    def addDataset(self, train, labels, test):
+       self.train = train
+       self.labels = labels
+       self.test = test
+
+    def trainModel(self, method=RandomForestClassifier):
+        self.model.fit(self.train, self.labels)
 
     def score(self):
         return np.mean(self.predict(self.test_data.data) == self.test_data.target)
@@ -28,7 +35,7 @@ class NewsClassify:
         X_new = self.tfidf.transform(dock_new)
         return self.model.predict(X_new)
 
-'''model = NewsClassify()
-model.train()
+model = NewsClassify()
+model.trainModel()
 print(model.score())
-print(model.predict(['This team win six games at the raw']))'''
+print(model.predict(['This team win six games at the raw']))
