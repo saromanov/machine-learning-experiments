@@ -32,7 +32,8 @@ class TripletLayer(lasagne.layers.Layer):
 def l_mlp(epochs):
     inpd = T.tensor4('inputs')
     target = T.ivector('targets')
-    inp = lasagne.layers.InputLayer(shape=(None,1,28,28,28), input_var=input_var)
+    inp = lasagne.layers.InputLayer(shape=(None,1,28,28,28))
+    inp = lasagne.layers.DimshuffleLayer(inp, (0, 'x', 1,2))
     drop = lasagne.layers.GaussianNoiseLayer(inp, sigma=0.15)
     h1 = lasagne.layers.DenseLayer(drop, num_units=800, nonlinearity=lasagne.nonlinearities.rectify)
     drop2 = lasagne.layers.DropoutLayer(inp, p=0.5)
@@ -57,5 +58,7 @@ def l_mlp(epochs):
             inputs, targets = batch
             train_err += train_err(inputs, targets)
             training_batches += 1
+
+l_mlp(20)
 
 
